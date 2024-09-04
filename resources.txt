@@ -1,0 +1,10 @@
+https://www.rubydoc.info/github/CocoaPods/Core/Pod
+https://github.com/CocoaPods/Core
+https://cyclonedx.org/docs/1.4/json/
+https://cyclonedx.org/tool-center/
+https://github.com/lsto/swift-package-sbom/tree/main
+https://github.com/CocoaPods/Xcodeproj
+https://swifttoolkit.dev/posts/xcodeproj-package#the-xcodeproj-package
+
+https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#cocoapods
+https://github.com/package-url/purl-spec

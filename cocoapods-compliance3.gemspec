@@ -1,15 +1,15 @@
-# coding: utf-8
-lib = File.expand_path('../lib', __FILE__)
-$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'cocoapods-compliance3/gem_version.rb'
+# # coding: utf-8
+# lib = File.expand_path('../lib', __FILE__)
+# $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+# require 'cocoapods-compliance3/gem_version.rb'
 
 Gem::Specification.new do |spec|
   spec.name          = 'cocoapods-compliance3'
-  spec.version       = CocoapodsCompliance3::VERSION
+  spec.version       = '0.2.2'
   spec.authors       = ['Thomas Winkler']
   spec.email         = ['twi@softwareag.com']
-  spec.description   = %q{A short description of cocoapods-compliance3.}
-  spec.summary       = %q{A longer description of cocoapods-compliance3.}
+  spec.summary       = 'A CocoaPods plugin to collect compliance information'
+  spec.description   = 'This plugin collects compliance information such as license, website, download URL, and version for CocoaPods dependencies.'
   spec.homepage      = 'https://github.com/EXAMPLE/cocoapods-compliance3'
   spec.license       = 'MIT'
 
