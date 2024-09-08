@@ -27,5 +27,3 @@ https://github.com/orgs/community/discussions/categories/code-security
 https://github.com/github/dependency-submission-toolkit
 https://github.com/gradle/github-dependency-graph-gradle-plugin
 https://github.com/orgs/community/discussions/11117
-
-gh api --method GET -H "Accept: application/vnd.github+json" /IOTA/c8y-sensorapp-ios/dependency-graph/snapshots
