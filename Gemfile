@@ -5,11 +5,6 @@ gemspec
 
 group :development do
   gem 'cocoapods'
-
-  gem 'bacon'
-  gem 'mocha'
-  gem 'mocha-on-bacon'
-  gem 'prettybacon'
-  # gem 'rubocop'
+  gem 'bundler', '~> 2.0'
   gem 'xcodeproj'
 end
