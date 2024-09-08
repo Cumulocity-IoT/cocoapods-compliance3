@@ -8,9 +8,9 @@ Gem::Specification.new do |spec|
   spec.version       = CocoapodsCompliance3::VERSION
   spec.authors       = ['Thomas Winkler']
   spec.email         = ['twi@softwareag.com']
-  spec.summary       = 'A CocoaPods plugin to collect compliance information'
-  spec.description   = 'This plugin collects compliance information such as license, website, download URL, and version for CocoaPods dependencies.'
-  spec.homepage      = 'https://github.com/EXAMPLE/cocoapods-compliance3'
+  spec.summary       = 'A CocoaPods plugin to collect compliance information for TPSafe'
+  spec.description   = 'This plugin collects compliance information such as license, website, download URL, and version for CocoaPods and SPM dependencies.'
+  spec.homepage      = 'https://github.softwareag.com/IOTA/cocoapods-compliance3'
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files`.split($/)
