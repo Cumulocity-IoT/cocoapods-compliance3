@@ -41,26 +41,22 @@ With `--purl=github` option:
 
 To install `cocoapods-compliance3`, follow these steps:
 
-1. Get the gem file from `Releases` section of the repository or build it from source:
-   ```
-   gem install cocoapods-compliance3-x.y.z.gem
-   ```
+Add the plugin to your project's Gemfile and install the using bundler:
+
+1. Open your project's Cocoapods `Gemfile` and add the following line in the same section where CocoaPods is imported:
+
+```
+gem 'cocoapods-compliance3', :git => 'https://github.softwareag.com/IOTA/cocoapods-compliance3', :tag => 'v1'
+```
+
+2. Install the bundle:
+```
+bundle install
+```
+
+As an alternative, you can install the plugin directly from the gem file. The gem file is released in the `Releases` section of the repository.  
    
-2. Open your project's Cocoapods `Gemfile` and add the following line in the same section where CocoaPods is imported:
-
-   ```ruby
-   gem 'cocoapods-compliance3'
-   ```
-
-3. Install the bundle:
-   
-   ```
-   bundle install
-   ```
-
-Step 1 is required as the `cocoapods-compliance3` is not available on RubyGems.
-
-This will install the plugin and make it available for use with CocoaPods in your project.
+To build and install the plugin from source, follow the instructions in the [Build from Source](#build-from-source) section.
 
 ## Usage
 
