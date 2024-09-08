@@ -8,3 +8,24 @@ https://swifttoolkit.dev/posts/xcodeproj-package#the-xcodeproj-package
 
 https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#cocoapods
 https://github.com/package-url/purl-spec
+
+https://github.com/dependabot/dependabot-core/pull/731
+
+https://github.com/advanced-security/cocoapods-dependency-submission-action
+https://github.com/advanced-security/spdx-dependency-submission-action
+https://github.com/actions/dependency-review-action
+https://github.com/anchore/sbom-action
+
+https://github.com/dependabot/dependabot-core/issues/7694
+https://github.com/dependabot/dependabot-core/issues/416
+
+https://github.com/anchore/syft
+https://github.com/anchore/grype
+
+https://github.com/orgs/community/discussions/categories/code-security
+
+https://github.com/github/dependency-submission-toolkit
+https://github.com/gradle/github-dependency-graph-gradle-plugin
+https://github.com/orgs/community/discussions/11117
+
+gh api --method GET -H "Accept: application/vnd.github+json" /IOTA/c8y-sensorapp-ios/dependency-graph/snapshots

@@ -5,116 +5,110 @@ require 'cocoapods-compliance3/gem_version.rb'
 module Pod
   class Command
     class Compliance < Command
-      self.summary = 'Short description of cocoapods-compliance3.'
+      self.summary = 'Create CycloneDX json from Cocoapods and Swift Package Manager project dependencies.'
 
       self.description = <<-DESC
-        Longer description of cocoapods-compliance3.
+      A plugin designed to scan third-party dependencies from both Cocoapods and Swift Package Manager 
+      in Xcode projects. This plugin generates a dependency report in the CycloneDX 1.4 JSON format with
+      options to configure the output format.
       DESC
 
       def self.options
         [
-          ['--component=COMPONENT', 'The component to collect compliance information for.'],
-          ['--version=VERSION', 'The version of the component to collect compliance information for.'],
-          ['--target=TARGET', 'The target to collect compliance information for.'],
-          ['--xcodeproj=PATH', 'The path to the Xcode project.'],
-          ['--output=PATH', 'The path to save the compliance information.'],
-          ['--filename=FILENAME', 'The filename of the compliance information. Default is compliance.json.'],
-          ['--download', 'Download the source code of the dependencies.'],
-          ['--generic', 'Use generic package URL for CycloneDX BOM, also for GitHub repositories.']
+          ['-n, --name=COMPONENT', 'The component name used in CycloneDX metadata'],
+          ['-v, --version=VERSION', 'The component version used in CycloneDX metadata'],
+          ['-f, --filename=FILENAME', 'The output filename (default is tp_bom.json)'],
+          ['-t, --target=TARGET', 'The Xcode target to collect compliance information for'],
+          ['-x, --xcodeproj=PATH', 'The path to the Xcode project'],
+          ['-d, --download=PATH', 'Download the source code of the dependencies to PATH'],
+          ['-p, --purl', 'One of default, platform, github, generic'],
+          ['-u, --urlparameter', 'The source download url parameter appended to PURL (default is download_url)'],
+          ['-a, --always', 'Always append source download URL to PURL (default is false)'],
         ].concat(super)
       end
 
       def initialize(argv)
-        @output_path = File.expand_path(argv.option('output') || Dir.pwd)
-        @filename = argv.option('filename') || 'compliance.json'
-        @download = argv.flag?('download', false)
-        @target = argv.option('target')
-        @xcodeproj = argv.option('xcodeproj')
-        @genericPkgUrls = argv.flag?('generic', false)
-        @componentName = argv.option('component')
-        @componentVersion = argv.option('version')
+        @componentName = argv.option('name') || argv.option('n')
+        @componentVersion = argv.option('version') || argv.option('v')
+        @filename = argv.option('filename') || argv.option('f') || 'tp_bom.json'
+        @target = argv.option('target') || argv.option('t')
+        @xcodeproj = argv.option('xcodeproj') || argv.option('x')
+        @download_path = argv.option('download') || argv.option('d')
+        @purlType = argv.option('purl') || argv.option('p') || 'default'
+        @sourceParameter = argv.option('urlparameter') || argv.option('u') || 'download_url'
+        @alwaysParameter = argv.flag?('always', false)
+
+        @download_path = nil unless @download_path && !@download_path.empty?
+        @target = nil unless @target && !@target.empty?
+
+        if (@download_path)
+          @download_path = File.expand_path(File.dirname(@filename))
+        end
+
+        @filename = File.expand_path(@filename)
+
+        @verbose = config.verbose?
         super
       end
 
       def validate!
         super
-        help! 'Output path is required' unless @output_path
         help! 'Filename is required' unless @filename
-        help! 'Component name is required' unless @componentName
-        help! 'Component version is required' if @componentVersion&.strip == ''
+        help! 'Component name is required. Use --name or -n.' unless @componentName
+        help! 'Component version is required. Use --version or -v' if @componentVersion&.strip == ''
       end
 
       def run
-        @verbose = config.verbose?
         podfile_lock = config.lockfile
         podfile = Pod::Podfile.from_file(config.podfile_path)
         xcodeproj = @xcodeproj || Dir.glob('*.xcodeproj').first
-        target_definition = nil
 
-        unless @target.nil?
-          target_definition = podfile.target_definition_list.select { |td| td.name == @target }.first
-        else 
-          target_definition = podfile.target_definition_list.select { |td| td.name != "Pods" }.first
+        target_definition = nil
+        if !@target.nil?
+          target_definition = podfile.target_definition_list.select { |td| td.name == @target }&.first
+        end
+        if target_definition.nil?
+          target_definition = podfile.target_definition_list.select { |td| td.name != "Pods" }&.first          
         end
 
-        user_project_path = target_definition.user_project_path
-        xcodeproj = user_project_path if user_project_path
+        if target_definition&.user_project_path
+          xcodeproj = target_definition&.user_project_path
+        end
 
-        UI.puts "Using Xcode project: #{xcodeproj}" if @verbose
-        UI.puts "Using target: #{target_definition.name}" if target_definition && @verbose
+        UI.puts "Podfile: #{config.podfile_path}"
+        UI.puts "Podfile.lock: #{config.lockfile_path}"
+        UI.puts "Xcode project: #{xcodeproj}"
+        UI.puts "Target: #{target_definition.name}" if target_definition
+        UI.puts "Download path: #{@download_path}" if @download_path
       
         swift_dependencies = extract_swift_package_references(xcodeproj);
         pod_dependencies = extract_podfile_lock_dependencies(podfile, podfile_lock, target_definition);
 
-        components = (swift_dependencies + pod_dependencies).map do |info|
-          to_cyclon_dx_component(info)
-        end
+        components = (swift_dependencies + pod_dependencies)
+        compliance_info = to_cyclon_dx(@componentName, @componentVersion, components)
+        
+        FileUtils.mkdir_p(@download_path) if @download_path
+        FileUtils.mkdir_p(File.dirname(@filename)) if @filename
+        File.write(@filename, JSON.pretty_generate(compliance_info))
 
-        compliance_info = {
-          bomFormat: 'CycloneDX',
-          serialNumber: "urn:uuid:#{SecureRandom.uuid}",
-          version: '1',
-          specVersion: '1.4',
-          metadata: {
-            timestamp: Time.now.utc.iso8601,
-            component: {
-              name: @componentName,
-              version: @componentVersion
-            },
-            tools: [
-              {
-                vendor: 'Cumulocity IoT',
-                name: 'cocoapods-compliance3',
-                version: CocoapodsCompliance3::VERSION
-              },
-            ] 
-          },
-          components: components
-        }
-        # create output directory if it does not exist
-        FileUtils.mkdir_p(@output_path) unless File.directory?(@output_path)
-
-        File.write(File.join(@output_path, @filename), JSON.pretty_generate(compliance_info))
-
-        if @download
+        if @download_path
+          FileUtils.mkdir_p(@download_path)
           download(swift_dependencies + pod_dependencies)
         end
 
-        UI.puts "Compliance information saved to #{@output_path}"
+        UI.puts "Compliance information saved to #{@filename}"
       end
 
       def extract_podfile_lock_dependencies(podfile, podfile_lock, target_definition)
-        dependencies = []
+        dependencies = podfile.dependencies
         unless target_definition.nil?
           dependencies = target_definition.dependencies.select do |dependency|
             r = target_definition.pod_whitelisted_for_configuration?(dependency.name, 'Release')
             UI.puts "Skipping #{dependency.name} as it is not configured for 'Release'" if !r
             r
           end
-        else 
-          dependencies = podfile.dependencies
         end
-
+        
         dependencies.map do |pod|
           UI.puts "Collecting compliance information for #{pod.name}" if @verbose
 
@@ -124,7 +118,7 @@ module Pod
           spec_set = sources_manager.search(pod)
 
           if spec_set.nil?
-            UI.warn "Specification for #{pod.name} not found"
+            UI.warn "Np spec_set found for #{pod.name}"
             next
           end
 
@@ -132,8 +126,6 @@ module Pod
           version = spec.version&.to_s
           commit = checkout_options[:commit]
           tag = spec.source[:tag]
-
-          UI.puts "Version: #{version}, Tag: #{tag}, Commit: #{commit}"
 
           base_url = spec.source[:git] || spec.source[:http]
           download_base_url = base_url.chomp('.git').chomp('/')
@@ -151,7 +143,8 @@ module Pod
             download_url: download_url,
             version: version,
             tag: tag,
-            commit: commit
+            commit: commit,
+            platform: 'cocoapods'
           }
         end
       end
@@ -165,9 +158,10 @@ module Pod
 
           name = obj.product_name
           UI.puts "Collecting compliance information for #{name}" if @verbose
+          UI.puts JSON.pretty_generate(obj.package.requirement) if @verbose
 
           version = obj.package.requirement['version']
-          commit = obj.package.requirement['revision']
+          commit = obj.package.requirement['revision'] || obj.package.requirement['branch']
           website = obj.package.repositoryURL.chomp('.git').chomp('/')
           download_url = "#{website}/archive/#{commit || version}.tar.gz"
 
@@ -189,39 +183,68 @@ module Pod
             license: license,
             description: description,
             website: website,
-            commit: commit
+            commit: commit,
+            platform: 'spm'
           }
         end
+      end
+
+      def to_cyclon_dx(name, version, components)
+        c = components.map { |info| to_cyclon_dx_component(info) }
+        {
+          bomFormat: 'CycloneDX',
+          serialNumber: "urn:uuid:#{SecureRandom.uuid}",
+          version: '1',
+          specVersion: '1.4',
+          metadata: {
+            timestamp: Time.now.utc.iso8601,
+            component: {
+              name: name,
+              version: version
+            },
+            tools: [
+              {
+                name: 'cocoapods-compliance3',
+                version: CocoapodsCompliance3::VERSION
+              },
+            ] 
+          },
+          components: c
+        }
       end
 
       def to_cyclon_dx_component(info)
         pkg_url = nil
         
         # todo: https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#cocoapods
-        # Should cocoapods be supported for purl?
-        
+        # Should cocoapods be supported for purl?        
         # When you enter the “purl”, if the project is hosted on GitHub, use “pkg:github/XXX/YYY@GIT_TAG” which 
         # provides a canonical way to download the source for compliance scanning.
-        version = info[:tag] || info[:version]
-        commit = info[:commit]
 
-        # UI.puts "#{info}" 
+        if @purlType == 'platform'
+          if info[:platform] == 'cocoapods'
+            pkg_url = purl_cocoapods(info)
+          elsif info[:platform] == 'spm'
+            pkg_url = purl_swift(info)
+          end
+        elsif @purlType == 'github'
+          pkg_url = purl_github(info)
+        elsif @purlType == 'generic'
+          pkg_url = purl_generic(info)
+        end 
 
-        if !commit && !version.nil? && !version.strip.empty? && info[:website]&.include?('github.com') && !@genericPkgUrls
-          UI.puts "website: #{info[:website]}" if @verbose
-          owner, repo = info[:website].chomp('.git').chomp('/').split('/')[-2..-1]  
-          pkg_url = "pkg:github/#{owner}/#{repo}@#{version}"
-        end
-
-        # fallback to generic package URL
         unless pkg_url
-          url_encoded = URI.encode_www_form_component(info[:download_url]) if info[:download_url]
-          v = info[:commit] || info[:tag] || info[:version]
-          if v && info[:download_url] && url_encoded
-            pkg_url = "pkg:generic/cocoapods/#{info[:name]}@#{v}?download_url=#{url_encoded}"
+          if info[:commit]
+            pkg_url = purl_generic(info)
+          else
+            pkg_url = purl_github(info)
           end
         end
-        
+
+        if @alwaysParameter || pkg_url&.include?("generic/")
+          pkg_url = append_download_url_to_purl(pkg_url, info)
+        end
+
         component = {
           type: info[:type],
           name: info[:name],
@@ -237,9 +260,40 @@ module Pod
         component
       end
 
+      def purl_github(info)
+        return nil unless info[:website]&.include?('github.com')
+        version = info[:tag] || info[:version] || ''
+        owner, repo = info[:website].chomp('.git').chomp('/').split('/')[-2..-1]  
+        "pkg:github/#{owner}/#{repo}@#{version}"
+      end
+
+      def purl_generic(info)
+        v = info[:commit] || info[:tag] || info[:version] || ''
+        "pkg:generic/swift/#{info[:name]}@#{v}"
+      end
+
+      def purl_cocoapods(info)
+        v = info[:version] || ''
+        "pkg:cocoapods/#{info[:name]}@#{v}"
+      end
+
+      def purl_swift(info)
+        return nil unless info[:website]
+        host, owner, repo = info[:website].chomp('.git').chomp('/').split('/')[-3..-1]  
+        v = info[:version] || ''
+        "pkg:swift/#{host}/#{owner}/#{repo}@#{v}"
+      end
+
+      def append_download_url_to_purl(purl, info) 
+        return unless info[:download_url]
+        url_encoded = URI.encode_www_form_component(info[:download_url]) if info[:download_url]
+        download = info[:download_url] && url_encoded ? "?#{@sourceParameter}=#{url_encoded}" : ''
+        purl + download
+      end
+
       def download(dependencies)
         dependencies.each do |info|
-          if info[:name].nil? || info[:version].nil? || info[:download_url].nil?
+          if (info[:name].nil? && info[:version].nil?) || info[:download_url].nil?
             UI.warn "Skipping download as it is missing name, version or download_url"
             UI.warn info
             next
@@ -247,7 +301,7 @@ module Pod
 
           UI.puts "Downloading #{info[:name]} from #{info[:download_url]}" if @verbose
           archive_name = File.basename(info[:name])
-          download_path = File.join(@output_path, "#{archive_name}-#{info[:version]}.tar.gz")
+          download_path = File.join(@download_path, "#{archive_name}-#{info[:version]}.tar.gz")
           URI.parse(info[:download_url]).open do |download|
             File.write(download_path, download.read)
           end

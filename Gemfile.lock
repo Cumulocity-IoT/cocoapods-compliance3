@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    cocoapods-compliance3 (0.4.1)
+    cocoapods-compliance3 (1.0.0)
 
 GEM
   remote: https://rubygems.org/
