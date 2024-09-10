@@ -82,7 +82,8 @@ Options:
     -u, --urlparameter        The source download url parameter appended to PURL
                               (default is download_url)
     -a, --always              Always append source download URL to PURL (default is false)
-
+    -e, --exclude=NAMES       Exclude dependencies from the report, separated by comma
+    
     --allow-root              Allows CocoaPods to run as root
     --silent                  Show nothing
     --verbose                 Show more debugging information

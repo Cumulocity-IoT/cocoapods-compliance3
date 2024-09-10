@@ -24,6 +24,7 @@ module Pod
           ['-p, --purl', 'One of default, platform, github, generic'],
           ['-u, --urlparameter', 'The source download url parameter appended to PURL (default is download_url)'],
           ['-a, --always', 'Always append source download URL to PURL (default is false)'],
+          ['-e, --exclude=NAMES', 'Exclude dependencies from the report, separated by comma'],
         ].concat(super)
       end
 
@@ -37,9 +38,11 @@ module Pod
         @purlType = argv.option('purl') || argv.option('p') || 'default'
         @sourceParameter = argv.option('urlparameter') || argv.option('u') || 'download_url'
         @alwaysParameter = argv.flag?('always', false)
+        @exclude = argv.option('exclude') || argv.option('e')
 
         @download_path = nil unless @download_path && !@download_path.empty?
         @target = nil unless @target && !@target.empty?
+        @exclude = nil unless @exclude && !@exclude.empty?
 
         @download_path = File.expand_path(@download_path) if @download_path        
         @filename = File.expand_path(@filename)
@@ -81,7 +84,8 @@ module Pod
         swift_dependencies = extract_swift_package_references(xcodeproj);
         pod_dependencies = extract_podfile_lock_dependencies(podfile, podfile_lock, target_definition);
 
-        components = (swift_dependencies + pod_dependencies)
+        exclude_list = @exclude&.split(',') || []
+        components = (swift_dependencies + pod_dependencies).select { |info| info[:name] && !exclude_list.include?(info[:name]) }
         compliance_info = to_cyclon_dx(@componentName, @componentVersion, components)
         
         FileUtils.mkdir_p(@download_path) if @download_path
@@ -90,7 +94,7 @@ module Pod
 
         if @download_path
           FileUtils.mkdir_p(@download_path)
-          download(swift_dependencies + pod_dependencies)
+          # download(swift_dependencies + pod_dependencies)
         end
 
         UI.puts "Compliance information saved to #{@filename}"
@@ -266,7 +270,7 @@ module Pod
 
       def purl_generic(info)
         v = info[:commit] || info[:tag] || info[:version] || ''
-        "pkg:generic/swift/#{info[:name]}@#{v}"
+        "pkg:generic/cocoapods/#{info[:name]}@#{v}"
       end
 
       def purl_cocoapods(info)
