@@ -41,10 +41,7 @@ module Pod
         @download_path = nil unless @download_path && !@download_path.empty?
         @target = nil unless @target && !@target.empty?
 
-        if (@download_path)
-          @download_path = File.expand_path(File.dirname(@filename))
-        end
-
+        @download_path = File.expand_path(@download_path) if @download_path        
         @filename = File.expand_path(@filename)
 
         @verbose = config.verbose?
